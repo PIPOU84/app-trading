@@ -139,9 +139,14 @@ def send(text: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     if not token:
         sys.exit("TELEGRAM_BOT_TOKEN manquant : ajoute-le dans les secrets GitHub.")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip() or find_chat_id(token)
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+    discovered = False
     if not chat_id:
-        sys.exit("Identifiant Telegram introuvable : envoie un message (par ex. « bonjour ») à ton bot, "
+        chat_id = find_chat_id(token)
+        discovered = True
+    if not chat_id:
+        sys.exit("Identifiant Telegram introuvable. Dans Telegram, ouvre la conversation avec TON bot "
+                 "(celui créé avec @BotFather), appuie sur « Démarrer » ou envoie « bonjour », "
                  "puis relance la tâche dans les 24 h.")
     for part in _split(text):
         r = requests.post(TG_API.format(token=token, method="sendMessage"), timeout=30,
@@ -149,6 +154,11 @@ def send(text: str) -> None:
         if not r.ok:
             sys.exit(f"Envoi Telegram refusé ({r.status_code}) : {r.json().get('description', r.text)}")
     print("Rapport envoyé sur Telegram.")
+    if discovered:
+        # Telegram n'expose le message « bonjour » que 24 h : sans ce secret, les soirs suivants échoueraient.
+        print("::warning::Ton identifiant Telegram est " + chat_id + ". Ajoute-le maintenant comme secret "
+              "TELEGRAM_CHAT_ID (Settings > Secrets and variables > Actions) pour que le rapport "
+              "fonctionne tous les soirs.")
 
 
 def main() -> None:
