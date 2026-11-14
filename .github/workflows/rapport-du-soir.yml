@@ -1,0 +1,33 @@
+# Rapport du soir : tourne sur les serveurs de GitHub, ton PC peut rester éteint.
+name: Rapport du soir
+
+on:
+  schedule:
+    # Du lundi au vendredi à 21:30 UTC = 22:30 (heure d'hiver) / 23:30 (heure d'été) à Paris,
+    # après la clôture de Wall Street. GitHub peut démarrer la tâche avec quelques minutes de retard.
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch: {}  # bouton « Run workflow » pour lancer un test à la main
+
+jobs:
+  rapport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Installer les dépendances
+        run: pip install -r backend/requirements.txt
+
+      - name: Mettre à jour les données, analyser et envoyer le rapport
+        working-directory: backend
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DAILY_PERIOD: 3y
+        run: python -m app.report
