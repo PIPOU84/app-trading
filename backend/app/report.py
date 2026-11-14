@@ -109,6 +109,10 @@ def build_message(s, errors: list[str] | None = None, min_score: int = 60, max_t
         lines.append("")
         lines.append(f"⚙ {len(errors)} donnée(s) non mise(s) à jour ce soir : "
                      + e(", ".join(x.split(' ')[0] for x in errors[:8])))
+    page_url = os.environ.get("PAGE_URL", "").strip()
+    if page_url:
+        lines.append("")
+        lines.append(f'📈 <a href="{e(page_url)}">Voir les graphiques et le détail des trades</a>')
     lines.append("")
     lines.append("<i>Aide à la décision, pas un conseil en investissement.</i>")
     return "\n".join(lines)
@@ -150,7 +154,8 @@ def send(text: str) -> None:
                  "puis relance la tâche dans les 24 h.")
     for part in _split(text):
         r = requests.post(TG_API.format(token=token, method="sendMessage"), timeout=30,
-                          json=dict(chat_id=chat_id, text=part, parse_mode="HTML", disable_web_page_preview=True))
+                          json=dict(chat_id=chat_id, text=part, parse_mode="HTML",
+                                    link_preview_options={"is_disabled": True}))
         if not r.ok:
             sys.exit(f"Envoi Telegram refusé ({r.status_code}) : {r.json().get('description', r.text)}")
     print("Rapport envoyé sur Telegram.")
@@ -165,6 +170,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Rapport du soir")
     p.add_argument("--dry-run", action="store_true", help="affiche le message sans l'envoyer")
     p.add_argument("--no-refresh", action="store_true", help="ne retélécharge pas les données")
+    p.add_argument("--site", metavar="DOSSIER", help="génère aussi la page du soir dans ce dossier")
     args = p.parse_args()
 
     init_db()
@@ -175,6 +181,9 @@ def main() -> None:
         print(f"Mise à jour terminée : {st['done']}/{st['total']} produits, {len(errors)} erreur(s).")
     with SessionLocal() as s:
         run_scan(s)
+        if args.site:
+            from .site import build_site
+            print(f"Page du soir générée dans {build_site(s, args.site)}")
         msg = build_message(s, errors)
     if args.dry_run:
         print(msg)

@@ -4,3 +4,4 @@ __pycache__/
 backend/data/
 node_modules/
 .claude/
+site/
